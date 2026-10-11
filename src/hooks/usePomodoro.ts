@@ -5,9 +5,11 @@ import { fmtClock } from "../lib/utils";
 interface Options {
   settings: Settings;
   onComplete: (phase: Phase, seconds: number) => void;
+  /** When false, the focus page is hidden and must not own the document title. */
+  liveTitle?: boolean;
 }
 
-export function usePomodoro({ settings, onComplete }: Options) {
+export function usePomodoro({ settings, onComplete, liveTitle = true }: Options) {
   const durationFor = useCallback(
     (p: Phase) => Math.max(1, Math.round(settings[p])) * 60,
     [settings],
@@ -127,9 +129,10 @@ export function usePomodoro({ settings, onComplete }: Options) {
 
   /* live document title */
   useEffect(() => {
+    if (!liveTitle) return;
     const prefix = running ? "▶" : "❚❚";
     document.title = `${prefix} ${fmtClock(remaining)} · ${phase === "focus" ? "Focus" : "Break"} — LIFEFORM`;
-  }, [remaining, running, phase]);
+  }, [remaining, running, phase, liveTitle]);
 
   return {
     phase,

@@ -179,6 +179,16 @@ export function SettingsPanel({
 
           <div className="space-y-3">
             <h3 className="text-[11px] uppercase tracking-[0.16em] text-white/35">Theme</h3>
+            <Toggle
+              label="Keep theme stable"
+              hint={
+                settings.stableTheme
+                  ? "The color you pick stays put"
+                  : "Fades to the next color every 5 seconds"
+              }
+              checked={settings.stableTheme}
+              onChange={(v) => set({ stableTheme: v })}
+            />
             <div className="grid grid-cols-2 gap-2">
               {(Object.keys(ACCENTS) as AccentKey[]).map((k) => (
                 <button

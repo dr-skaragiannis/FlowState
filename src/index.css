@@ -5,6 +5,18 @@
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 }
 
+@property --accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #c6f135;
+}
+
+@property --accent-2 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #84cc16;
+}
+
 :root {
   --accent: #c6f135;
   --accent-2: #84cc16;
@@ -15,6 +27,16 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+html {
+  transition: --accent 1.6s ease, --accent-2 1.6s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    transition: none;
+  }
 }
 
 body {

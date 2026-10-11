@@ -61,6 +61,8 @@ export interface Settings {
   layer: Ambient;
   volume: number;
   accent: AccentKey;
+  /** When true, the accent stays on the chosen color instead of cycling. */
+  stableTheme: boolean;
   dailyGoal: number;
 }
 
@@ -137,5 +139,6 @@ export const DEFAULT_SETTINGS: Settings = {
   layer: "off",
   volume: 0.45,
   accent: "lime",
+  stableTheme: false,
   dailyGoal: 8,
 };

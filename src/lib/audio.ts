@@ -57,6 +57,16 @@ class AmbienceEngine {
     if (this.layerKey !== "off" && !this.layer) this.layer = this.buildVoice(this.layerKey, 0.6);
   }
 
+  /** Shared output. Synth notes mix into the same bus as the ambience bed. */
+  bus(): GainNode | null {
+    this.ensureCtx();
+    return this.master;
+  }
+
+  context(): AudioContext | null {
+    return this.ensureCtx();
+  }
+
   /* -------------------------------- buffers ------------------------------ */
 
   private noise(kind: NoiseKind): AudioBuffer {

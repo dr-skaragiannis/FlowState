@@ -1,12 +1,12 @@
 # LIFEFORM
 
-A cellular focus studio — pomodoro timer, task board, ambience and momentum tracking.
-Everything stays local in your browser.
+A cellular instrument and focus studio. The home page plays synth notes over an ambience bed. The focus counter — timer, tasks and momentum — lives on its own page. Everything stays local in your browser.
 
 Built with React 19, TypeScript, Vite and Tailwind CSS 4.
 
 ## Features
 
+- **Instrument** — home-page keyboard and chord pads mixed with the ambience bed
 - **Focus timer** — configurable pomodoro cycles with automatic break handling
 - **Task board** — prioritised task flow with estimates and pomodoro tracking
 - **Ambience** — generated background soundscapes for deep work

@@ -17,7 +17,8 @@ import {
 import { audio } from "./lib/audio";
 import { focusSecondsOn, streak as calcStreak } from "./lib/stats";
 import { seedSessions, seedTasks } from "./lib/seed";
-import { dayKey, fmtDuration, greeting, uid, useLocalStorage, useToasts } from "./lib/utils";
+import { dayKey, fmtClock, fmtDuration, greeting, uid, useLocalStorage, useToasts } from "./lib/utils";
+import { usePage } from "./lib/route";
 import { usePomodoro } from "./hooks/usePomodoro";
 import { CommandPalette, type Command } from "./components/CommandPalette";
 import { SettingsPanel } from "./components/SettingsPanel";
@@ -26,6 +27,7 @@ import { TaskPanel } from "./components/TaskPanel";
 import { TimerPanel } from "./components/TimerPanel";
 import { CellularMark } from "./components/Logo";
 import { Icon, Pill } from "./components/ui";
+import { PlayPage } from "./pages/PlayPage";
 import { cn } from "./utils/cn";
 
 const CYCLE_ORDER: Ambient[] = ["off", ...AMBIENT_META.map((m) => m.key)];
@@ -47,6 +49,7 @@ export default function App() {
   const [activeId, setActiveId] = useLocalStorage<string | undefined>("flowstate.active.v1", undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [page, go] = usePage();
   const { toasts, push } = useToasts();
 
   /* ------------------------------ derived ------------------------------ */
@@ -94,7 +97,7 @@ export default function App() {
     [activeId, push, setSessions, setTasks, settings.chime, settings.volume],
   );
 
-  const timer = usePomodoro({ settings, onComplete: handleComplete });
+  const timer = usePomodoro({ settings, onComplete: handleComplete, liveTitle: page === "focus" });
 
   /* ------------------------------ effects ------------------------------ */
   useEffect(() => {
@@ -102,6 +105,20 @@ export default function App() {
     document.documentElement.style.setProperty("--accent", a.a);
     document.documentElement.style.setProperty("--accent-2", a.b);
   }, [settings.accent]);
+
+  useEffect(() => {
+    if (settings.stableTheme) return;
+    const order = Object.keys(ACCENTS) as AccentKey[];
+    const id = window.setInterval(() => {
+      setSettings((s) => {
+        if (s.stableTheme) return s;
+        const i = Math.max(0, order.indexOf(s.accent));
+        const next = order[(i + 1) % order.length];
+        return next === s.accent ? s : { ...s, accent: next };
+      });
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [settings.stableTheme, setSettings]);
 
   useEffect(() => {
     audio.setVolume(settings.volume);
@@ -269,6 +286,8 @@ export default function App() {
         group: "Tasks",
         run: () => document.getElementById("task-composer")?.focus(),
       },
+      { id: "go-play", label: "Open the instrument", hint: "Home", icon: "wave", group: "App", run: () => go("play") },
+      { id: "go-focus", label: "Open the focus counter", hint: "Timer", icon: "clock", group: "App", run: () => go("focus") },
       { id: "settings", label: "Open settings", icon: "sliders", group: "App", run: () => setSettingsOpen(true) },
       {
         id: "clear",
@@ -292,7 +311,7 @@ export default function App() {
         run: () => !t.completed && setActiveId(t.id),
       })),
     ];
-  }, [patchSettings, push, setActiveId, setAmbient, setSessions, tasks, timer, toggleTimer]);
+  }, [go, patchSettings, push, setActiveId, setAmbient, setSessions, tasks, timer, toggleTimer]);
 
   /* ------------------------------ shortcuts ------------------------------ */
   useEffect(() => {
@@ -310,6 +329,7 @@ export default function App() {
         setPaletteOpen((v) => !v);
         return;
       }
+      if (page !== "focus") return;
       if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
       switch (e.key.toLowerCase()) {
         case " ":
@@ -343,7 +363,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [timer, toggleTimer, cycleAmbient]);
+  }, [page, timer, toggleTimer, cycleAmbient]);
 
   /* ------------------------------ render ------------------------------ */
   return (
@@ -374,18 +394,46 @@ export default function App() {
                 LIFEFORM
                 <span className="text-[var(--accent)]">.</span>
               </h1>
-              <p className="mt-1.5 hidden items-center gap-2 text-[10.5px] font-medium uppercase tracking-[0.28em] text-white/40 sm:flex">
-                <span>Cellular focus studio</span>
+              <p className="mt-1.5 hidden items-center gap-2 text-[10.5px] font-medium uppercase tracking-[0.28em] text-white/40 md:flex">
+                <span>{page === "play" ? "Instrument" : "Focus counter"}</span>
                 <span className="text-white/20">·</span>
                 <span className="normal-case tracking-normal text-white/50">
-                  {greeting()} — {PHASE_META[timer.phase].label.toLowerCase()}
+                  {page === "play"
+                    ? "Notes over ambience"
+                    : `${greeting()} — ${PHASE_META[timer.phase].label.toLowerCase()}`}
                 </span>
               </p>
             </div>
           </div>
 
+          <nav className="flex items-center rounded-2xl bg-black/30 p-1 ring-1 ring-white/10">
+            <button
+              type="button"
+              onClick={() => go("play")}
+              className={cn(
+                "rounded-xl px-3.5 py-2 text-[13px] font-semibold transition",
+                page === "play" ? "bg-white/[0.14] text-white ring-1 ring-white/15" : "text-white/45 hover:text-white",
+              )}
+            >
+              Play
+            </button>
+            <button
+              type="button"
+              onClick={() => go("focus")}
+              className={cn(
+                "rounded-xl px-3.5 py-2 text-[13px] font-semibold transition",
+                page === "focus" ? "bg-white/[0.14] text-white ring-1 ring-white/15" : "text-white/45 hover:text-white",
+              )}
+            >
+              Focus
+              {timer.running && (
+                <span className="tabular ml-1.5 text-[11px] text-[var(--accent)]">{fmtClock(timer.remaining)}</span>
+              )}
+            </button>
+          </nav>
+
           <div className="ml-auto flex items-center gap-2">
-            <div className="hidden items-center gap-2.5 xl:flex">
+            <div className={cn("items-center gap-2.5", page === "focus" ? "hidden xl:flex" : "hidden")}>
               {settings.ambient !== "off" && (
                 <Pill tone="accent" className="cursor-default">
                   <Icon name={ambientMeta(settings.ambient).icon} className="h-3.5 w-3.5" />
@@ -435,6 +483,15 @@ export default function App() {
       </header>
 
       <main className="mx-auto w-[90%] pb-16 pt-8">
+        {page === "play" ? (
+          <PlayPage
+            armed={!paletteOpen && !settingsOpen}
+            settings={settings}
+            onAmbient={setAmbient}
+            onLayer={setLayer}
+            onVolume={setVolume}
+          />
+        ) : (
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(420px,0.86fr)]">
           <div className="anim-in space-y-5">
             <TimerPanel
@@ -543,9 +600,10 @@ export default function App() {
             </div>
           </div>
         </div>
+        )}
 
         <footer className="mt-12 flex flex-col items-center gap-1 text-center text-[12.5px] text-white/35">
-          <p>LIFEFORM — a cellular focus studio. Sessions, tasks and settings stay in this browser.</p>
+          <p>LIFEFORM — play notes over ambience, or keep time on the focus counter. Everything stays in this browser.</p>
         </footer>
       </main>
 
