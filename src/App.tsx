@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ACCENTS,
   AMBIENT_META,
@@ -120,16 +120,32 @@ export default function App() {
     return () => window.clearInterval(id);
   }, [settings.stableTheme, setSettings]);
 
-  useEffect(() => {
-    audio.setVolume(settings.volume);
-    if (settings.ambient === "off") audio.stop();
-    else audio.play(settings.ambient);
-  }, [settings.ambient, settings.volume]);
+  /** Saved soundscapes stay quiet until this visit chooses one. */
+  const [ambienceLive, setAmbienceLive] = useState(false);
+  const ambientSeen = useRef(settings.ambient);
 
   useEffect(() => {
-    if (settings.layer === "off") audio.setLayer("off");
-    else audio.setLayer(settings.layer);
-  }, [settings.layer, settings.ambient]);
+    if (ambientSeen.current === settings.ambient) return;
+    ambientSeen.current = settings.ambient;
+    setAmbienceLive(settings.ambient !== "off");
+  }, [settings.ambient]);
+
+  useEffect(() => {
+    audio.setVolume(settings.volume);
+    if (!ambienceLive || settings.ambient === "off") {
+      audio.stop();
+      return;
+    }
+    audio.play(settings.ambient);
+  }, [settings.ambient, settings.volume, ambienceLive]);
+
+  useEffect(() => {
+    if (!ambienceLive || settings.ambient === "off" || settings.layer === "off") {
+      if (ambienceLive) audio.setLayer("off");
+      return;
+    }
+    audio.setLayer(settings.layer);
+  }, [settings.layer, settings.ambient, ambienceLive]);
 
   /* browsers block audio until a gesture happens — resume on first interaction */
   useEffect(() => {
@@ -149,6 +165,7 @@ export default function App() {
 
   const setAmbient = useCallback(
     (a: Ambient) => {
+      setAmbienceLive(a !== "off");
       // a sound can't sit on top of itself — drop the layer if it collides
       patchSettings(a === settings.layer ? { ambient: a, layer: "off" } : { ambient: a });
       const m = ambientMeta(a);
@@ -434,7 +451,7 @@ export default function App() {
 
           <div className="ml-auto flex items-center gap-2">
             <div className={cn("items-center gap-2.5", page === "focus" ? "hidden xl:flex" : "hidden")}>
-              {settings.ambient !== "off" && (
+              {ambienceLive && settings.ambient !== "off" && (
                 <Pill tone="accent" className="cursor-default">
                   <Icon name={ambientMeta(settings.ambient).icon} className="h-3.5 w-3.5" />
                   {ambientMeta(settings.ambient).label}
@@ -490,6 +507,7 @@ export default function App() {
             onAmbient={setAmbient}
             onLayer={setLayer}
             onVolume={setVolume}
+            ambienceLive={ambienceLive}
           />
         ) : (
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(420px,0.86fr)]">
@@ -509,6 +527,7 @@ export default function App() {
               onAmbient={setAmbient}
               onLayer={setLayer}
               onVolume={setVolume}
+              ambienceLive={ambienceLive}
             />
             <StatsPanel sessions={sessions} tasks={tasks} settings={settings} />
           </div>
@@ -610,7 +629,10 @@ export default function App() {
       <SettingsPanel
         open={settingsOpen}
         settings={settings}
-        onChange={patchSettings}
+        onChange={(patch) => {
+          if (patch.ambient !== undefined) setAmbienceLive(patch.ambient !== "off");
+          patchSettings(patch);
+        }}
         onClose={() => setSettingsOpen(false)}
         onClearSessions={() => {
           setSessions([]);

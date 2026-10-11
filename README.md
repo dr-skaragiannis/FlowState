@@ -6,7 +6,7 @@ Built with React 19, TypeScript, Vite and Tailwind CSS 4.
 
 ## Features
 
-- **Instrument** — home-page keyboard and chord pads mixed with the ambience bed
+- **Instrument** — home-page keyboard, chord pads and one-tap arpeggios mixed with the ambience bed
 - **Focus timer** — configurable pomodoro cycles with automatic break handling
 - **Task board** — prioritised task flow with estimates and pomodoro tracking
 - **Ambience** — generated background soundscapes for deep work

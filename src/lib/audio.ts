@@ -74,7 +74,7 @@ class AmbienceEngine {
     const cached = this.buffers.get(kind);
     if (cached) return cached;
 
-    const len = Math.floor(ctx.sampleRate * 5);
+    const len = Math.floor(ctx.sampleRate * 18);
     const buf = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = buf.getChannelData(0);
 
@@ -140,7 +140,7 @@ class AmbienceEngine {
     src.connect(bp);
     bp.connect(g);
     g.connect(dest);
-    src.start(at, Math.random() * 2.5);
+    src.start(at, Math.random() * Math.max(0.2, this.noise(kind).duration - decay - 0.1));
     src.stop(at + decay + 0.05);
   }
 
@@ -211,8 +211,100 @@ class AmbienceEngine {
     src.connect(bp);
     bp.connect(g);
     g.connect(dest);
-    src.start(at, Math.random() * 2.5);
+    src.start(at, Math.random() * Math.max(0.2, this.noise("brown").duration - dur - 0.1));
     src.stop(at + dur + 0.05);
+  }
+
+  /**
+   * A short melodic phrase. Blackbird calls slur; dawn chips stay short and separate.
+   * Each phrase picks a new key, contour, and place in the stereo field.
+   */
+  private song(
+    ctx: AudioContext,
+    dest: AudioNode,
+    at: number,
+    level: number,
+    kind: "blackbird" | "chip",
+  ) {
+    const slur = kind === "blackbird";
+    const count = slur ? 5 + Math.floor(Math.random() * 6) : 2 + Math.floor(Math.random() * 3);
+    const base = slur ? 86 + Math.floor(Math.random() * 8) : 96 + Math.floor(Math.random() * 7);
+    const steps = slur ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7];
+
+    const panner = ctx.createStereoPanner();
+    panner.pan.value = (Math.random() * 2 - 1) * 0.8;
+    panner.connect(dest);
+
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    const air = ctx.createOscillator();
+    air.type = "triangle";
+    const airGain = ctx.createGain();
+    airGain.gain.value = slur ? 0.12 : 0.05;
+    const tone = ctx.createGain();
+    const vib = ctx.createOscillator();
+    const vibGain = ctx.createGain();
+    vib.frequency.value = (slur ? 4.2 : 6.5) + Math.random() * 2;
+    vibGain.gain.value = slur ? 5 + Math.random() * 7 : 2;
+    vib.connect(vibGain);
+    vibGain.connect(osc.frequency);
+
+    let midi = base;
+    let t = at;
+    for (let i = 0; i < count; i++) {
+      const freq = 440 * 2 ** ((midi - 69) / 12);
+      const dur = slur ? 0.1 + Math.random() * 0.16 : 0.035 + Math.random() * 0.04;
+      const gap = dur + (slur ? 0.02 + Math.random() * 0.07 : 0.03 + Math.random() * 0.06);
+      const peak = level * (0.45 + Math.random() * 0.55);
+      if (i === 0) {
+        osc.frequency.setValueAtTime(freq, t);
+        air.frequency.setValueAtTime(freq * 2, t);
+      } else {
+        osc.frequency.exponentialRampToValueAtTime(freq, t + Math.min(0.04, dur * 0.45));
+        air.frequency.exponentialRampToValueAtTime(freq * 2, t + Math.min(0.04, dur * 0.45));
+      }
+      tone.gain.setValueAtTime(0.0001, t);
+      tone.gain.linearRampToValueAtTime(peak, t + 0.016);
+      tone.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      const fall = i > count * 0.55;
+      const dir = Math.random() < (fall ? 0.72 : 0.42) ? -1 : 1;
+      const leap = steps[Math.floor(Math.random() * (slur ? steps.length : 3))];
+      midi = Math.max(base - 9, Math.min(base + 10, midi + dir * (leap === 0 ? 0 : leap)));
+      if (midi === base && Math.random() < 0.3) midi += dir * 2;
+      t += gap;
+    }
+
+    const end = t + 0.08;
+    osc.connect(tone);
+    air.connect(airGain);
+    airGain.connect(tone);
+    tone.connect(panner);
+    osc.start(at);
+    air.start(at);
+    vib.start(at);
+    osc.stop(end);
+    air.stop(end);
+    vib.stop(end);
+  }
+
+  /** A soft high glint, used for the night sky. */
+  private glint(ctx: AudioContext, dest: AudioNode, at: number, level: number) {
+    const panner = ctx.createStereoPanner();
+    panner.pan.value = (Math.random() * 2 - 1) * 0.9;
+    panner.connect(dest);
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    const freq = 1400 + Math.random() * 4200;
+    osc.frequency.setValueAtTime(freq, at);
+    osc.frequency.exponentialRampToValueAtTime(freq * (0.82 + Math.random() * 0.3), at + 0.7);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(level, at + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.55 + Math.random() * 0.8);
+    osc.connect(g);
+    g.connect(panner);
+    osc.start(at);
+    osc.stop(at + 1.6);
   }
 
   /* -------------------------------- voices ------------------------------- */
@@ -273,38 +365,59 @@ class AmbienceEngine {
         const id = window.setTimeout(tick, minMs + Math.random() * (maxMs - minMs));
         timers.add(id);
       };
-      const id = window.setTimeout(tick, minMs);
+      const id = window.setTimeout(tick, Math.random() * minMs);
       timers.add(id);
+    };
+    /** Move a parameter in irregular steps so the bed does not pulse on a clock. */
+    const drift = (param: AudioParam, center: number, spread: number) => {
+      let value = center;
+      every(() => {
+        value += (Math.random() - 0.47) * spread * 0.55;
+        value = Math.min(center + spread, Math.max(center - spread, value));
+        param.setTargetAtTime(Math.max(0.05, value), ctx.currentTime, 0.45 + Math.random() * 1.4);
+      }, 600, 2800);
     };
 
     switch (mode) {
       case "rain": {
         const s = noiseSrc("white", 1);
-        const hp = filter("highpass", 420, 0.7);
-        const bp = filter("bandpass", 1250, 0.35);
-        const amp = gain(1.05);
-        lfo(0.19, 0.14, amp.gain);
+        const far = noiseSrc("pink", 0.72);
+        const hp = filter("highpass", 380, 0.7);
+        const bp = filter("bandpass", 1100, 0.4);
+        const farLp = filter("lowpass", 900, 0.5);
+        const amp = gain(0.85);
+        const farAmp = gain(0.35);
+        drift(bp.frequency, 1200, 700);
+        drift(amp.gain, 0.85, 0.28);
         s.connect(hp);
         hp.connect(bp);
         bp.connect(amp);
         amp.connect(out);
+        far.connect(farLp);
+        farLp.connect(farAmp);
+        farAmp.connect(out);
         every(() => {
-          const n = 1 + Math.floor(Math.random() * 3);
+          if (Math.random() < 0.22) return;
+          const n = 1 + Math.floor(Math.random() * (Math.random() < 0.25 ? 7 : 3));
           for (let i = 0; i < n; i++)
-            this.droplet(ctx, out, ctx.currentTime + Math.random() * 0.5, 0.03 + Math.random() * 0.03);
-        }, 160, 620);
+            this.droplet(ctx, out, ctx.currentTime + Math.random() * 0.9, 0.02 + Math.random() * 0.045);
+        }, 80, 1500);
         break;
       }
       case "waves": {
         const s = noiseSrc("brown", 1);
         const lp = filter("lowpass", 760, 0.8);
         const amp = gain(1.0);
-        lfo(0.082, 0.62, amp.gain);
-        lfo(0.082, 400, lp.frequency);
+        lfo(0.07, 0.45, amp.gain);
+        drift(lp.frequency, 700, 380);
+        drift(amp.gain, 1, 0.35);
         s.connect(lp);
         lp.connect(amp);
         amp.connect(out);
-        every(() => this.burst(ctx, out, ctx.currentTime + Math.random() * 0.6, 500, 0.7, 0.05, 1.6, "white", 0.7), 1400, 4200);
+        every(() => {
+          if (Math.random() < 0.35) return;
+          this.burst(ctx, out, ctx.currentTime + Math.random() * 1.2, 280 + Math.random() * 700, 0.5 + Math.random(), 0.03 + Math.random() * 0.05, 0.8 + Math.random() * 1.4, "white", 0.5 + Math.random() * 0.6);
+        }, 900, 6400);
         break;
       }
       case "wind": {
@@ -314,9 +427,9 @@ class AmbienceEngine {
         const whistle = filter("bandpass", 1250, 3.5);
         const whistleAmp = gain(0.16);
         const amp = gain(1.0);
-        lfo(0.058, 0.55, amp.gain);
-        lfo(0.041, 280, lp.frequency);
-        lfo(0.033, 550, whistle.frequency);
+        drift(amp.gain, 1, 0.4);
+        drift(lp.frequency, 520, 260);
+        drift(whistle.frequency, 1300, 700);
         s.connect(lp);
         lp.connect(bp);
         bp.connect(amp);
@@ -329,39 +442,176 @@ class AmbienceEngine {
       case "fire": {
         const s = noiseSrc("brown", 1);
         const lp = filter("lowpass", 430, 0.6);
-        const amp = gain(1.0);
-        lfo(0.11, 0.24, amp.gain);
+        const amp = gain(0.9);
+        drift(amp.gain, 0.9, 0.25);
+        drift(lp.frequency, 420, 180);
         s.connect(lp);
         lp.connect(amp);
         amp.connect(out);
-        every(() => this.crackle(ctx, out, ctx.currentTime + Math.random() * 0.35, 0.1 + Math.random() * 0.12), 90, 520);
+        every(() => {
+          if (Math.random() < 0.18) return;
+          this.crackle(ctx, out, ctx.currentTime + Math.random() * 0.5, 0.06 + Math.random() * 0.16);
+        }, 70, 1100);
         break;
       }
       case "night": {
         const s = noiseSrc("brown", 1);
         const lp = filter("lowpass", 250, 0.5);
-        const amp = gain(0.95);
-        lfo(0.045, 0.22, amp.gain);
+        const amp = gain(0.8);
+        drift(amp.gain, 0.8, 0.2);
+        drift(lp.frequency, 240, 120);
         s.connect(lp);
         lp.connect(amp);
         amp.connect(out);
-        every(() => this.cricket(ctx, out, ctx.currentTime + Math.random() * 0.4, 0.035 + Math.random() * 0.03), 650, 2600);
+        every(() => {
+          if (Math.random() < 0.2) return;
+          const voices = Math.random() < 0.3 ? 2 : 1;
+          for (let i = 0; i < voices; i++)
+            this.cricket(ctx, out, ctx.currentTime + Math.random() * 1.2, 0.02 + Math.random() * 0.04);
+        }, 900, 6200);
+        break;
+      }
+      case "forest": {
+        const leaves = noiseSrc("pink", 0.85);
+        const canopy = noiseSrc("brown", 0.55);
+        const bp = filter("bandpass", 1400, 0.45);
+        const lp = filter("lowpass", 700, 0.6);
+        const leafAmp = gain(0.55);
+        const bodyAmp = gain(0.7);
+        drift(bp.frequency, 1500, 800);
+        drift(lp.frequency, 640, 280);
+        drift(leafAmp.gain, 0.55, 0.22);
+        leaves.connect(bp);
+        bp.connect(leafAmp);
+        leafAmp.connect(out);
+        canopy.connect(lp);
+        lp.connect(bodyAmp);
+        bodyAmp.connect(out);
+        every(() => {
+          if (Math.random() < 0.45) return;
+          this.burst(
+            ctx,
+            out,
+            ctx.currentTime + Math.random() * 0.4,
+            1800 + Math.random() * 2200,
+            0.6 + Math.random() * 0.8,
+            0.02 + Math.random() * 0.03,
+            0.12 + Math.random() * 0.2,
+            "pink",
+            0.8 + Math.random(),
+          );
+        }, 300, 2200);
+        const sing = () => {
+          if (Math.random() < 0.12) return;
+          this.song(ctx, out, ctx.currentTime + Math.random() * 0.4, 0.07 + Math.random() * 0.05, "blackbird");
+          if (Math.random() < 0.28) {
+            this.song(ctx, out, ctx.currentTime + 0.9 + Math.random() * 1.6, 0.03 + Math.random() * 0.02, "blackbird");
+          }
+        };
+        sing();
+        every(sing, 5000, 18000);
+        break;
+      }
+      case "sky": {
+        const air = noiseSrc("pink", 0.6);
+        const hp = filter("highpass", 900, 0.5);
+        const lp = filter("lowpass", 2800, 0.4);
+        const amp = gain(0.22);
+        drift(hp.frequency, 1100, 600);
+        drift(amp.gain, 0.22, 0.1);
+        air.connect(hp);
+        hp.connect(lp);
+        lp.connect(amp);
+        amp.connect(out);
+        const sigh = noiseSrc("brown", 0.4);
+        const sighLp = filter("lowpass", 280, 0.5);
+        const sighAmp = gain(0.35);
+        drift(sighAmp.gain, 0.3, 0.2);
+        sigh.connect(sighLp);
+        sighLp.connect(sighAmp);
+        sighAmp.connect(out);
+        every(() => {
+          if (Math.random() < 0.25) return;
+          const n = 1 + Math.floor(Math.random() * 3);
+          for (let i = 0; i < n; i++)
+            this.glint(ctx, out, ctx.currentTime + Math.random() * 1.8, 0.015 + Math.random() * 0.02);
+        }, 3500, 14000);
+        break;
+      }
+      case "brook": {
+        const close = noiseSrc("white", 1);
+        const far = noiseSrc("pink", 0.66);
+        const closeBp = filter("bandpass", 900, 0.55);
+        const farBp = filter("bandpass", 420, 0.7);
+        const closeAmp = gain(0.55);
+        const farAmp = gain(0.7);
+        drift(closeBp.frequency, 980, 520);
+        drift(farBp.frequency, 460, 240);
+        drift(closeAmp.gain, 0.55, 0.25);
+        close.connect(closeBp);
+        closeBp.connect(closeAmp);
+        closeAmp.connect(out);
+        far.connect(farBp);
+        farBp.connect(farAmp);
+        farAmp.connect(out);
+        every(() => {
+          const n = Math.random() < 0.2 ? 1 : 2 + Math.floor(Math.random() * 6);
+          for (let i = 0; i < n; i++) {
+            this.burst(
+              ctx,
+              out,
+              ctx.currentTime + Math.random() * 0.55,
+              500 + Math.random() * 2200,
+              1 + Math.random() * 4,
+              0.03 + Math.random() * 0.05,
+              0.05 + Math.random() * 0.12,
+              Math.random() > 0.4 ? "white" : "pink",
+              0.7 + Math.random() * 1.1,
+            );
+          }
+        }, 90, 900);
+        break;
+      }
+      case "dawn": {
+        const air = noiseSrc("brown", 0.7);
+        const lp = filter("lowpass", 640, 0.6);
+        const amp = gain(0.45);
+        drift(lp.frequency, 600, 250);
+        drift(amp.gain, 0.45, 0.18);
+        air.connect(lp);
+        lp.connect(amp);
+        amp.connect(out);
+        const call = () => {
+          if (Math.random() < 0.18) return;
+          const flock = Math.random() < 0.35 ? 2 : 1;
+          for (let i = 0; i < flock; i++)
+            this.song(ctx, out, ctx.currentTime + i * (0.15 + Math.random() * 0.4), 0.04 + Math.random() * 0.03, "chip");
+          if (Math.random() < 0.2)
+            this.song(ctx, out, ctx.currentTime + 1.2 + Math.random(), 0.045, "blackbird");
+        };
+        call();
+        every(call, 2800, 11000);
         break;
       }
       case "cafe": {
         const s = noiseSrc("brown", 1);
         const bp = filter("bandpass", 410, 0.55);
-        const amp = gain(1.35);
-        lfo(0.14, 0.28, amp.gain);
+        const amp = gain(1.1);
+        drift(amp.gain, 1.1, 0.3);
+        drift(bp.frequency, 480, 220);
         s.connect(bp);
         bp.connect(amp);
         amp.connect(out);
         every(() => {
-          const n = 1 + Math.floor(Math.random() * 2);
+          if (Math.random() < 0.15) return;
+          const n = 1 + Math.floor(Math.random() * 3);
           for (let i = 0; i < n; i++)
-            this.murmur(ctx, out, ctx.currentTime + Math.random() * 0.8, 0.09 + Math.random() * 0.06);
-        }, 420, 1700);
-        every(() => this.burst(ctx, out, ctx.currentTime + Math.random() * 0.4, 2600 + Math.random() * 1800, 12, 0.05, 0.22), 3200, 9000);
+            this.murmur(ctx, out, ctx.currentTime + Math.random() * 1.4, 0.06 + Math.random() * 0.08);
+        }, 500, 2800);
+        every(() => {
+          if (Math.random() < 0.4) return;
+          this.burst(ctx, out, ctx.currentTime + Math.random() * 0.6, 1800 + Math.random() * 2800, 8 + Math.random() * 8, 0.03 + Math.random() * 0.04, 0.12 + Math.random() * 0.2);
+        }, 2400, 12000);
         break;
       }
       case "deep": {
@@ -411,7 +661,11 @@ class AmbienceEngine {
 
     sources.forEach((s) => {
       try {
-        s.start(t0 + Math.random() * 0.04);
+        if (s instanceof AudioBufferSourceNode && s.buffer) {
+          s.start(t0, Math.random() * Math.max(0, s.buffer.duration - 0.5));
+        } else {
+          s.start(t0);
+        }
       } catch {
         /* already started */
       }

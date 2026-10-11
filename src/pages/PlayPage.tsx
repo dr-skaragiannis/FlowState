@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Ambient, Settings } from "../types";
+import { ARP_META, ARP_SPEEDS, arpChordStep, voiceChord, type ArpId, type ArpSpeed } from "../lib/arp";
 import { noteName, pitchClass, PRESET_META, synth, type PresetId } from "../lib/synth";
 import { useLocalStorage } from "../lib/utils";
 import { cn } from "../utils/cn";
+import { Icon } from "../components/ui";
 import { AmbienceDeck } from "../components/AmbienceDeck";
 
 type ScaleId = "major" | "minor" | "dorian" | "penta";
@@ -132,14 +134,18 @@ interface Rig {
   tonic: number;
   scale: ScaleId;
   level: number;
+  arp: ArpId;
+  arpSpeed: ArpSpeed;
 }
 
 const DEFAULT_RIG: Rig = {
-  preset: "pad",
-  startMidi: 48,
+  preset: "crypt",
+  startMidi: 36,
   tonic: 0,
-  scale: "major",
-  level: 0.75,
+  scale: "minor",
+  level: 0.72,
+  arp: "ping",
+  arpSpeed: "slow",
 };
 
 function isBlack(midi: number) {
@@ -152,16 +158,23 @@ export function PlayPage({
   onAmbient,
   onLayer,
   onVolume,
+  ambienceLive,
 }: {
   armed: boolean;
   settings: Settings;
   onAmbient: (a: Ambient) => void;
   onLayer: (a: Ambient) => void;
   onVolume: (v: number) => void;
+  ambienceLive: boolean;
 }) {
   const [rig, setRig] = useLocalStorage<Rig>("lifeform.synth.v1", DEFAULT_RIG);
   const [sounding, setSounding] = useState<number[]>([]);
   const [sustainOn, setSustainOn] = useState(false);
+  const [arpOn, setArpOn] = useState(false);
+  /** Chord index while the arp follows a pad. Null plays the whole scale. */
+  const [arpChord, setArpChord] = useState<number | null>(null);
+  /** Scale chord currently held by the arp. */
+  const [arpLive, setArpLive] = useState<number | null>(null);
 
   const counts = useRef(new Map<number, number>());
   const latched = useRef(new Set<number>());
@@ -182,12 +195,12 @@ export function PlayPage({
   }, []);
 
   const press = useCallback(
-    (midi: number, velocity = 0.8) => {
+    (midi: number, velocity = 0.8, voice?: PresetId) => {
       const n = counts.current.get(midi) ?? 0;
       counts.current.set(midi, n + 1);
       if (n === 0) {
         latched.current.delete(midi);
-        synth.noteOn(midi, velocity);
+        synth.noteOn(midi, velocity, voice);
       }
       sync();
     },
@@ -212,6 +225,22 @@ export function PlayPage({
   const releaseRef = useRef(release);
   pressRef.current = press;
   releaseRef.current = release;
+  const arpHeld = useRef(new Set<number>());
+  const arpOnRef = useRef(false);
+  arpOnRef.current = arpOn;
+  /** Computer keys currently held, used as the arpeggio when the arp is running. */
+  const fingered = useRef(new Set<number>());
+  const pointed = useRef<number | null>(null);
+
+  const releaseArp = useCallback(() => {
+    arpHeld.current.forEach((midi) => releaseRef.current(midi));
+    arpHeld.current.clear();
+  }, []);
+
+  const playArp = useCallback((midi: number, velocity: number) => {
+    arpHeld.current.add(midi);
+    pressRef.current(midi, velocity, "crypt");
+  }, []);
 
   const setSustain = useCallback(
     (on: boolean) => {
@@ -237,9 +266,7 @@ export function PlayPage({
   }, [rig.level]);
 
   useEffect(() => {
-    document.title = sounding.length
-      ? `${noteName(sounding[sounding.length - 1])} · LIFEFORM`
-      : "LIFEFORM · Play";
+    document.title = sounding.length ? `${noteName(sounding[0])} · LIFEFORM` : "LIFEFORM · Play";
   }, [sounding]);
 
   useEffect(() => {
@@ -257,6 +284,8 @@ export function PlayPage({
     keyMidi.current.clear();
     sustainRef.current = false;
     setSustainOn(false);
+    arpHeld.current.clear();
+    setArpOn(false);
     synth.releaseAll();
     setSounding([]);
   }, [armed]);
@@ -274,6 +303,36 @@ export function PlayPage({
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.code === "KeyA") {
+        e.preventDefault();
+        if (!e.repeat) setArpOn((on) => !on);
+        return;
+      }
+      const patternByKey: Partial<Record<string, ArpId>> = {
+        Digit1: "up",
+        Digit4: "down",
+        Digit8: "wave",
+        Digit9: "ping",
+        Digit0: "spark",
+        KeyP: "strum",
+      };
+      const picked = patternByKey[e.code];
+      if (picked) {
+        e.preventDefault();
+        if (!e.repeat) setRig((r) => ({ ...r, arp: picked }));
+        return;
+      }
+      if (e.code === "BracketLeft" || e.code === "BracketRight") {
+        e.preventDefault();
+        if (e.repeat) return;
+        const order = ARP_SPEEDS.map((s) => s.id);
+        setRig((r) => {
+          const i = Math.max(0, order.indexOf(r.arpSpeed));
+          const next = order[Math.min(order.length - 1, Math.max(0, i + (e.code === "BracketRight" ? 1 : -1)))];
+          return next === r.arpSpeed ? r : { ...r, arpSpeed: next };
+        });
+        return;
+      }
       if (e.code === "Space") {
         e.preventDefault();
         if (!e.repeat) setSustain(true);
@@ -294,7 +353,8 @@ export function PlayPage({
       e.preventDefault();
       const midi = startRef.current + offset;
       keyMidi.current.set(e.code, midi);
-      pressRef.current(midi, 0.84);
+      if (arpOnRef.current) fingered.current.add(midi);
+      else pressRef.current(midi, 0.84);
     };
     const onUp = (e: KeyboardEvent) => {
       if (e.code === "Space") {
@@ -304,6 +364,7 @@ export function PlayPage({
       const midi = keyMidi.current.get(e.code);
       if (midi == null) return;
       keyMidi.current.delete(e.code);
+      fingered.current.delete(midi);
       releaseRef.current(midi);
     };
     window.addEventListener("keydown", onDown);
@@ -314,7 +375,71 @@ export function PlayPage({
       keyMidi.current.forEach((midi) => releaseRef.current(midi));
       keyMidi.current.clear();
     };
-  }, [armed, setSustain, shiftOctave]);
+  }, [armed, setSustain, shiftOctave, setRig]);
+
+  const scale = SCALES.find((s) => s.id === rig.scale) ?? SCALES[0];
+  const chordRoot = rig.startMidi + rig.tonic;
+  const arpShape = arpChord != null ? scale.chords[arpChord] : undefined;
+  const chords = useMemo(() => {
+    const source = arpShape ? [arpShape] : scale.chords;
+    return source.map((chord) => voiceChord(chord.intervals.map((i) => chordRoot + i)));
+  }, [chordRoot, arpShape, scale]);
+  const chordsRef = useRef(chords);
+  chordsRef.current = chords;
+  const patternRef = useRef(rig.arp);
+  patternRef.current = rig.arp;
+  const liveRef = useRef(setArpLive);
+  liveRef.current = setArpLive;
+  const speedMs = ARP_SPEEDS.find((s) => s.id === rig.arpSpeed)?.ms ?? 540;
+
+  useEffect(() => {
+    if (!arpOn || !armed) return;
+    let dead = false;
+    let step = 0;
+    let previous = -1;
+    const timers = new Set<number>();
+    const later = (fn: () => void, ms: number) => {
+      const id = window.setTimeout(() => {
+        timers.delete(id);
+        if (!dead) fn();
+      }, ms);
+      timers.add(id);
+    };
+
+    const tick = () => {
+      const held = [...fingered.current];
+      if (pointed.current != null) held.push(pointed.current);
+      const shapes = held.length ? [voiceChord(held)] : chordsRef.current;
+      const pattern = patternRef.current;
+      if (shapes.length === 0) {
+        later(tick, speedMs);
+        return;
+      }
+      const hit = arpChordStep(pattern, shapes, step, previous);
+      previous = hit.cursor;
+      step += 1;
+      liveRef.current(shapes.length > 1 ? hit.cursor : null);
+      const keep = new Set(hit.notes);
+      arpHeld.current.forEach((midi) => {
+        if (keep.has(midi)) return;
+        arpHeld.current.delete(midi);
+        releaseRef.current(midi);
+      });
+      hit.notes.forEach((midi, i) => {
+        if (arpHeld.current.has(midi)) return;
+        later(() => playArp(midi, i === 0 ? 0.74 : 0.46), i * hit.stagger);
+      });
+      later(tick, speedMs);
+    };
+
+    tick();
+    return () => {
+      dead = true;
+      timers.forEach((id) => window.clearTimeout(id));
+      releaseArp();
+      liveRef.current(null);
+    };
+  }, [arpOn, armed, rig.arp, speedMs, chords, playArp, releaseArp]);
 
   const keys = useMemo(() => {
     const all: number[] = [];
@@ -324,10 +449,7 @@ export function PlayPage({
   const whites = keys.filter((m) => !isBlack(m));
   const blacks = keys.filter((m) => isBlack(m));
   const soundingSet = useMemo(() => new Set(sounding), [sounding]);
-
-  const scale = SCALES.find((s) => s.id === rig.scale) ?? SCALES[0];
-  const chordRoot = rig.startMidi + rig.tonic;
-  const last = sounding.length ? sounding[sounding.length - 1] : null;
+  const last = sounding.length ? sounding[0] : null;
 
   const hitMidi = (e: ReactPointerEvent) => {
     const el = document.elementFromPoint(e.clientX, e.clientY);
@@ -342,6 +464,12 @@ export function PlayPage({
     const prev = pointers.current.get(e.pointerId);
     const next = hit?.midi;
     if (prev === next) return;
+    if (arpOnRef.current) {
+      pointed.current = next ?? null;
+      if (next != null) pointers.current.set(e.pointerId, next);
+      else pointers.current.delete(e.pointerId);
+      return;
+    }
     if (prev != null) release(prev);
     if (next != null && hit) {
       const rect = hit.node.getBoundingClientRect();
@@ -500,19 +628,96 @@ export function PlayPage({
           ))}
         </div>
 
+        <div className="relative mt-4 flex flex-wrap items-center gap-2">
+          <span className="w-12 text-[10px] uppercase tracking-[0.14em] text-white/30">Arp</span>
+          <button
+            type="button"
+            aria-pressed={arpOn}
+            onClick={() => setArpOn((on) => !on)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition",
+              arpOn ? "text-[#061014]" : "text-white/85 ring-1 ring-white/15 hover:bg-white/[0.06]",
+            )}
+            style={arpOn ? { background: "var(--accent)", boxShadow: "0 8px 24px -12px var(--accent)" } : undefined}
+          >
+            <Icon name={arpOn ? "pause" : "play"} className="h-3.5 w-3.5" filled />
+            {arpOn ? "Stop" : "Play"}
+            <kbd className="rounded bg-black/25 px-1 py-px text-[10px] font-semibold text-white/70">A</kbd>
+          </button>
+          {ARP_META.map((pattern) => (
+            <button
+              key={pattern.id}
+              type="button"
+              title={pattern.hint}
+              aria-pressed={rig.arp === pattern.id}
+              onClick={() => setRig((r) => ({ ...r, arp: pattern.id }))}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition",
+                rig.arp === pattern.id
+                  ? "bg-[var(--accent)]/20 text-[var(--accent)] ring-1 ring-[var(--accent)]/40"
+                  : "text-white/45 ring-1 ring-white/10 hover:text-white",
+              )}
+            >
+              {pattern.label}
+              <kbd className="rounded bg-black/30 px-1 py-px text-[10px] font-semibold text-white/50">{pattern.key}</kbd>
+            </button>
+          ))}
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setArpChord(null)}
+              className={cn(
+                "rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition",
+                arpChord == null ? "bg-white/15 text-white" : "text-white/40 hover:text-white/75",
+              )}
+            >
+              Scale
+            </button>
+            <span className="px-1 text-[10px] font-semibold tracking-wide text-white/35">
+              <kbd className="rounded bg-black/30 px-1 py-px">[</kbd>
+              <kbd className="ml-0.5 rounded bg-black/30 px-1 py-px">]</kbd>
+            </span>
+            {ARP_SPEEDS.map((speed) => (
+              <button
+                key={speed.id}
+                type="button"
+                aria-pressed={rig.arpSpeed === speed.id}
+                onClick={() => setRig((r) => ({ ...r, arpSpeed: speed.id }))}
+                className={cn(
+                  "rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition",
+                  rig.arpSpeed === speed.id ? "bg-white/15 text-white" : "text-white/40 hover:text-white/75",
+                )}
+              >
+                {speed.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="relative mt-2 text-[12px] text-white/35">
+          {arpOn
+            ? arpShape
+              ? `Arpeggiating ${arpShape.name} ${noteName(chordRoot + arpShape.intervals[0])}. Hold keys to use those notes instead.`
+              : "Walking the key, one low note at a time. Hold the keyboard to arpeggiate what you play."
+            : "A starts it. 1 4 8 9 0 P choose the figure, [ ] the pace. It stays quiet until you start it."}
+        </p>
+
         <div className="relative mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-          {scale.chords.map((chord) => {
+          {scale.chords.map((chord, index) => {
             const midis = chord.intervals.map((i) => chordRoot + i);
-            const on = midis.every((m) => soundingSet.has(m));
+            const selected = arpChord === index;
+            const live = arpOn && arpChord == null && arpLive === index;
+            const on = midis.every((m) => soundingSet.has(m)) || (arpOn && selected) || live;
             return (
               <button
                 key={chord.name}
                 type="button"
+                aria-pressed={selected}
                 className={cn(
                   "rounded-2xl px-3 py-3 text-left transition",
                   on
                     ? "text-[#061014]"
                     : "bg-white/[0.04] text-white/75 ring-1 ring-white/10 hover:bg-white/[0.08]",
+                  selected && !on && "ring-[var(--accent)]/50",
                 )}
                 style={
                   on
@@ -524,6 +729,8 @@ export function PlayPage({
                 }
                 onPointerDown={(e) => {
                   e.preventDefault();
+                  setArpChord(index);
+                  if (arpOnRef.current) return;
                   try {
                     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
                   } catch {
@@ -569,12 +776,14 @@ export function PlayPage({
           onPointerUp={(e) => {
             const midi = pointers.current.get(e.pointerId);
             pointers.current.delete(e.pointerId);
-            if (midi != null) release(midi);
+            if (pointers.current.size === 0) pointed.current = null;
+            if (midi != null && !arpOnRef.current) release(midi);
           }}
           onPointerCancel={(e) => {
             const midi = pointers.current.get(e.pointerId);
             pointers.current.delete(e.pointerId);
-            if (midi != null) release(midi);
+            if (pointers.current.size === 0) pointed.current = null;
+            if (midi != null && !arpOnRef.current) release(midi);
           }}
         >
           <div className="absolute inset-0 flex">
@@ -634,12 +843,19 @@ export function PlayPage({
         </div>
 
         <p className="relative mt-3 text-[12px] text-white/35">
-          Play the keys or the row above. Lower on a key is louder.{" "}
+          Play the keys, a chord, or an arp. Lower on a key is louder.{" "}
           <span className="text-white/55">Z–M</span> and <span className="text-white/55">Q–I</span> are the
-          keyboard, space holds sustain, arrows shift the octave. Notes sit on top of the ambience bed.
+          keyboard — hold them while the arp runs and it walks those notes.{" "}
+          <span className="text-white/55">A</span> starts and stops it. Space holds sustain, arrows shift the octave.
         </p>
 
-        <AmbienceDeck settings={settings} onAmbient={onAmbient} onLayer={onLayer} onVolume={onVolume} />
+        <AmbienceDeck
+          settings={settings}
+          live={ambienceLive}
+          onAmbient={onAmbient}
+          onLayer={onLayer}
+          onVolume={onVolume}
+        />
       </section>
     </div>
   );

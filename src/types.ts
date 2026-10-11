@@ -27,6 +27,10 @@ export type Ambient =
   | "wind"
   | "fire"
   | "night"
+  | "forest"
+  | "sky"
+  | "brook"
+  | "dawn"
   | "cafe"
   | "deep"
   | "white"
@@ -101,11 +105,15 @@ export interface AmbientMeta {
 }
 
 export const AMBIENT_META: AmbientMeta[] = [
-  { key: "rain", label: "Rain", icon: "rain", group: "Nature", desc: "Steady rainfall with soft droplets" },
+  { key: "rain", label: "Rain", icon: "rain", group: "Nature", desc: "Showers that thicken and thin" },
   { key: "waves", label: "Waves", icon: "waves", group: "Nature", desc: "Slow ocean swell on a shore" },
   { key: "wind", label: "Wind", icon: "wind", group: "Nature", desc: "Gusts moving across a field" },
   { key: "fire", label: "Fire", icon: "fire", group: "Nature", desc: "Crackling hearth, low ember rumble" },
   { key: "night", label: "Night", icon: "moon", group: "Nature", desc: "Distant crickets and still air" },
+  { key: "forest", label: "Forest", icon: "forest", group: "Nature", desc: "Leaves, and a blackbird that changes its song" },
+  { key: "sky", label: "Night sky", icon: "sky", group: "Nature", desc: "Open air and rare glints overhead" },
+  { key: "brook", label: "Brook", icon: "brook", group: "Nature", desc: "Water moving over stone, never the same" },
+  { key: "dawn", label: "Dawn", icon: "dawn", group: "Nature", desc: "Soft wind and scattered bird calls" },
   { key: "cafe", label: "Café", icon: "cafe", group: "Places", desc: "Murmured chatter and cups" },
   { key: "white", label: "White", icon: "wave", group: "Noise", desc: "Even white noise, gently tamed" },
   { key: "pink", label: "Pink", icon: "wave", group: "Noise", desc: "Balanced pink noise, warmer" },
@@ -125,7 +133,7 @@ export const ambientMeta = (k: Ambient): AmbientMeta =>
   };
 
 /** Sounds that work nicely stacked on top of a main ambience. */
-export const LAYER_KEYS: Ambient[] = ["off", "fire", "night", "wind", "rain", "drone"];
+export const LAYER_KEYS: Ambient[] = ["off", "fire", "night", "forest", "wind", "rain", "brook", "drone"];
 
 export const DEFAULT_SETTINGS: Settings = {
   focus: 25,

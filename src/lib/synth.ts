@@ -1,8 +1,9 @@
 import { audio } from "./audio";
 
-export type PresetId = "keys" | "pad" | "bell" | "lead" | "organ";
+export type PresetId = "crypt" | "keys" | "pad" | "bell" | "lead" | "organ";
 
 export const PRESET_META: { id: PresetId; label: string; hint: string }[] = [
+  { id: "crypt", label: "Crypt", hint: "Slow dark dungeon pad" },
   { id: "keys", label: "Keys", hint: "Soft electric piano" },
   { id: "pad", label: "Pad", hint: "Wide wash for the bed" },
   { id: "bell", label: "Bell", hint: "Short ringing partials" },
@@ -30,6 +31,20 @@ interface Preset {
 }
 
 const PRESETS: Record<PresetId, Preset> = {
+  crypt: {
+    partials: [
+      { type: "sine", ratio: 0.5, gain: 0.62, detune: 0 },
+      { type: "sawtooth", ratio: 1, gain: 0.2, detune: -8 },
+      { type: "sawtooth", ratio: 1, gain: 0.2, detune: 8 },
+      { type: "triangle", ratio: 2, gain: 0.045, detune: -2 },
+    ],
+    attack: 1.7,
+    decay: 1.4,
+    sustain: 0.84,
+    release: 3.6,
+    level: 0.15,
+    filter: { freq: 520, q: 0.45 },
+  },
   keys: {
     partials: [
       { type: "sine", ratio: 1, gain: 0.85, detune: 0 },
@@ -45,16 +60,16 @@ const PRESETS: Record<PresetId, Preset> = {
   },
   pad: {
     partials: [
-      { type: "sawtooth", ratio: 1, gain: 0.42, detune: -9 },
-      { type: "sawtooth", ratio: 1, gain: 0.42, detune: 9 },
-      { type: "triangle", ratio: 0.5, gain: 0.22, detune: 0 },
+      { type: "sine", ratio: 0.5, gain: 0.4, detune: 0 },
+      { type: "sawtooth", ratio: 1, gain: 0.3, detune: -8 },
+      { type: "sawtooth", ratio: 1, gain: 0.3, detune: 8 },
     ],
-    attack: 0.38,
-    decay: 0.45,
-    sustain: 0.78,
-    release: 1.35,
-    level: 0.22,
-    filter: { freq: 1400, q: 0.7 },
+    attack: 1.15,
+    decay: 0.9,
+    sustain: 0.8,
+    release: 2.8,
+    level: 0.17,
+    filter: { freq: 780, q: 0.4 },
   },
   bell: {
     partials: [
@@ -144,12 +159,12 @@ class SynthEngine {
     return { ctx, out: this.out };
   }
 
-  noteOn(midi: number, velocity = 0.8) {
+  noteOn(midi: number, velocity = 0.8, voice?: PresetId) {
     const dest = this.dest();
     if (!dest) return;
     this.silence(midi, 0.02);
     const { ctx, out } = dest;
-    const preset = PRESETS[this.preset];
+    const preset = PRESETS[voice ?? this.preset] ?? PRESETS[this.preset];
     const now = ctx.currentTime;
     const freq = 440 * 2 ** ((midi - 69) / 12);
     const peak = Math.max(0.0008, preset.level * Math.max(0.05, Math.min(1, velocity)));

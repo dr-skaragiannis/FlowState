@@ -27,6 +27,7 @@ export function TimerPanel({
   onAmbient,
   onLayer,
   onVolume,
+  ambienceLive,
 }: {
   phase: Phase;
   remaining: number;
@@ -42,6 +43,7 @@ export function TimerPanel({
   onAmbient: (a: Ambient) => void;
   onLayer: (a: Ambient) => void;
   onVolume: (v: number) => void;
+  ambienceLive: boolean;
 }) {
   const R = 128;
   const C = 2 * Math.PI * R;
@@ -185,7 +187,13 @@ export function TimerPanel({
         </GhostButton>
       </div>
 
-      <AmbienceDeck settings={settings} onAmbient={onAmbient} onLayer={onLayer} onVolume={onVolume} />
+      <AmbienceDeck
+        settings={settings}
+        live={ambienceLive}
+        onAmbient={onAmbient}
+        onLayer={onLayer}
+        onVolume={onVolume}
+      />
     </div>
   );
 }

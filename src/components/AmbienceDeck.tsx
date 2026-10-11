@@ -11,11 +11,14 @@ import { Icon } from "./ui";
 
 export function AmbienceDeck({
   settings,
+  live,
   onAmbient,
   onLayer,
   onVolume,
 }: {
   settings: Settings;
+  /** False until this visit turns a soundscape on. Saved choices stay quiet. */
+  live: boolean;
   onAmbient: (a: Ambient) => void;
   onLayer: (a: Ambient) => void;
   onVolume: (v: number) => void;
@@ -25,7 +28,7 @@ export function AmbienceDeck({
       <div className="mb-2.5 flex items-center justify-between gap-3">
         <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">Ambience</span>
         <div className="flex flex-1 items-center justify-end gap-2">
-          {settings.ambient !== "off" && (
+          {live && settings.ambient !== "off" && (
             <Icon name={metaOf(settings.ambient).icon} className="h-3.5 w-3.5 text-white/45" />
           )}
           <input
@@ -52,7 +55,7 @@ export function AmbienceDeck({
             </span>
             <div className="flex flex-wrap gap-1.5">
               {AMBIENT_META.filter((m) => m.group === group).map((m) => {
-                const on = settings.ambient === m.key;
+                const on = live && settings.ambient === m.key;
                 return (
                   <button
                     key={m.key}
@@ -76,7 +79,7 @@ export function AmbienceDeck({
         ))}
       </div>
 
-      {settings.ambient !== "off" && (
+      {live && settings.ambient !== "off" && (
         <div className="mt-2.5 flex items-start gap-2 rounded-2xl bg-black/20 p-2 ring-1 ring-white/[0.06]">
           <span className="flex w-[46px] shrink-0 items-center gap-1 pt-[7px] text-[9.5px] uppercase leading-none tracking-[0.1em] text-white/25">
             <Icon name="layers" className="h-3 w-3" />
