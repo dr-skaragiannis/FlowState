@@ -16,7 +16,7 @@ Built with React 19, TypeScript, Vite and Tailwind CSS 4.
 
 ## Live site
 
-https://dr-skaragiannis.github.io/FlowState/
+https://dr-skaragiannis.github.io/Lifeform/
 
 The published page is the single-file build committed to `docs/`, served by
 GitHub Pages (branch `main`, folder `/docs`).
