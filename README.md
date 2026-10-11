@@ -14,6 +14,13 @@ Built with React 19, TypeScript, Vite and Tailwind CSS 4.
 - **Command palette** — keyboard-first navigation
 - **Local-first** — all state lives in `localStorage`, no accounts or servers
 
+## Live site
+
+https://dr-skaragiannis.github.io/FlowState/
+
+The published page is the single-file build committed to `docs/`, served by
+GitHub Pages (branch `main`, folder `/docs`).
+
 ## Development
 
 ```bash
@@ -28,6 +35,17 @@ The production build is bundled into **one HTML file** via
 all JavaScript and CSS are inlined, so `dist/index.html` can be opened directly
 from disk or dropped on any static host.
 
+### Publishing
+
+`docs/index.html` is the shipped build. After changing the app, regenerate and
+commit it:
+
+```bash
+npm run build
+Copy-Item dist/index.html docs/index.html -Force
+git add docs/index.html && git commit -m "Rebuild single-file bundle" && git push
+```
+
 ## License
 
-Private project. All rights reserved.
+All rights reserved.
