@@ -128,7 +128,7 @@ export function usePomodoro({ settings, onComplete }: Options) {
   /* live document title */
   useEffect(() => {
     const prefix = running ? "▶" : "❚❚";
-    document.title = `${prefix} ${fmtClock(remaining)} · ${phase === "focus" ? "Focus" : "Break"} — Flowstate`;
+    document.title = `${prefix} ${fmtClock(remaining)} · ${phase === "focus" ? "Focus" : "Break"} — LIFEFORM`;
   }, [remaining, running, phase]);
 
   return {

@@ -24,6 +24,7 @@ import { SettingsPanel } from "./components/SettingsPanel";
 import { StatsPanel } from "./components/StatsPanel";
 import { TaskPanel } from "./components/TaskPanel";
 import { TimerPanel } from "./components/TimerPanel";
+import { CellularMark } from "./components/Logo";
 import { Icon, Pill } from "./components/ui";
 import { cn } from "./utils/cn";
 
@@ -97,7 +98,7 @@ export default function App() {
 
   /* ------------------------------ effects ------------------------------ */
   useEffect(() => {
-    const a = ACCENTS[settings.accent] ?? ACCENTS.violet;
+    const a = ACCENTS[settings.accent] ?? ACCENTS.lime;
     document.documentElement.style.setProperty("--accent", a.a);
     document.documentElement.style.setProperty("--accent-2", a.b);
   }, [settings.accent]);
@@ -350,37 +351,41 @@ export default function App() {
       {/* backdrop */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-[#06070d]" />
+        <div className="absolute left-1/2 top-[-22%] -translate-x-1/2">
+          <div
+            className="glow-drift h-[680px] w-[1100px] rounded-full opacity-[0.28] blur-[140px]"
+            style={{ background: "radial-gradient(circle, var(--accent), transparent 68%)" }}
+          />
+        </div>
         <div
-          className="absolute left-1/2 top-[-18%] h-[560px] w-[900px] -translate-x-1/2 rounded-full opacity-[0.22] blur-[130px]"
-          style={{ background: "radial-gradient(circle, var(--accent), transparent 68%)" }}
-        />
-        <div
-          className="absolute bottom-[-12%] right-[-10%] h-[420px] w-[560px] rounded-full opacity-[0.14] blur-[120px]"
-          style={{ background: "radial-gradient(circle, var(--accent-2), transparent 70%)" }}
+          className="glow-drift absolute bottom-[-16%] right-[-8%] h-[520px] w-[680px] rounded-full opacity-[0.18] blur-[130px]"
+          style={{ background: "radial-gradient(circle, var(--accent-2), transparent 70%)", animationDelay: "-6s" }}
         />
         <div className="grid-bg absolute inset-0" />
       </div>
 
       {/* header */}
-      <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-[#06070d]/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1260px] items-center gap-4 px-4 py-3.5 sm:px-6">
-          <div className="flex items-center gap-3">
-            <span
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-lg"
-              style={{ backgroundImage: "linear-gradient(135deg, var(--accent), var(--accent-2))" }}
-            >
-              <Icon name="flame" className="h-[18px] w-[18px]" filled />
-            </span>
-            <div className="leading-tight">
-              <h1 className="text-[15px] font-semibold tracking-tight text-white">Flowstate</h1>
-              <p className="hidden text-[11px] text-white/40 sm:block">
-                {greeting()} — {PHASE_META[timer.phase].label.toLowerCase()} in progress
+      <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-[#06070d]/75 backdrop-blur-xl">
+        <div className="mx-auto flex w-[90%] items-center gap-4 py-4">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <CellularMark />
+            <div className="min-w-0 leading-none">
+              <h1 className="text-[26px] font-black tracking-[-0.045em] text-white sm:text-[32px]">
+                LIFEFORM
+                <span className="text-[var(--accent)]">.</span>
+              </h1>
+              <p className="mt-1.5 hidden items-center gap-2 text-[10.5px] font-medium uppercase tracking-[0.28em] text-white/40 sm:flex">
+                <span>Cellular focus studio</span>
+                <span className="text-white/20">·</span>
+                <span className="normal-case tracking-normal text-white/50">
+                  {greeting()} — {PHASE_META[timer.phase].label.toLowerCase()}
+                </span>
               </p>
             </div>
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            <div className="hidden items-center gap-2 md:flex">
+            <div className="hidden items-center gap-2.5 xl:flex">
               {settings.ambient !== "off" && (
                 <Pill tone="accent" className="cursor-default">
                   <Icon name={ambientMeta(settings.ambient).icon} className="h-3.5 w-3.5" />
@@ -409,7 +414,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="flex h-9 items-center gap-2 rounded-xl bg-white/[0.04] px-3 text-[12.5px] text-white/55 ring-1 ring-white/10 transition hover:bg-white/[0.08] hover:text-white"
+              className="flex h-11 items-center gap-2 rounded-xl bg-white/[0.04] px-3.5 text-[13px] text-white/60 ring-1 ring-white/10 transition hover:bg-white/[0.08] hover:text-white"
             >
               <Icon name="command" className="h-4 w-4" />
               <span className="hidden sm:inline">Commands</span>
@@ -421,7 +426,7 @@ export default function App() {
               type="button"
               onClick={() => setSettingsOpen(true)}
               aria-label="Open settings"
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.04] text-white/60 ring-1 ring-white/10 transition hover:bg-white/[0.08] hover:text-white"
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/[0.04] text-white/60 ring-1 ring-white/10 transition hover:bg-white/[0.08] hover:text-white"
             >
               <Icon name="sliders" className="h-4 w-4" />
             </button>
@@ -429,8 +434,8 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1260px] px-4 pb-14 pt-6 sm:px-6">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_384px]">
+      <main className="mx-auto w-[90%] pb-16 pt-8">
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(420px,0.86fr)]">
           <div className="anim-in space-y-5">
             <TimerPanel
               phase={timer.phase}
@@ -539,8 +544,8 @@ export default function App() {
           </div>
         </div>
 
-        <footer className="mt-10 flex flex-col items-center gap-1 text-center text-[11.5px] text-white/30">
-          <p>Flowstate — a calm pomodoro workspace. Sessions, tasks & settings live in your browser.</p>
+        <footer className="mt-12 flex flex-col items-center gap-1 text-center text-[12.5px] text-white/35">
+          <p>LIFEFORM — a cellular focus studio. Sessions, tasks and settings stay in this browser.</p>
         </footer>
       </main>
 

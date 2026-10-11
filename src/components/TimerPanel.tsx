@@ -53,7 +53,7 @@ export function TimerPanel({
   const nearDone = remaining <= 5 && running;
 
   return (
-    <div className="glass relative overflow-hidden rounded-[28px] p-5 shadow-[0_30px_90px_-40px_rgba(0,0,0,1)] sm:p-7">
+    <div className="glass relative overflow-hidden rounded-[32px] p-6 shadow-[0_30px_90px_-40px_rgba(0,0,0,1)] sm:p-8">
       {/* corner glow */}
       <div
         className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full opacity-40 blur-3xl"
@@ -74,7 +74,7 @@ export function TimerPanel({
               type="button"
               onClick={() => onSelect(p2)}
               className={cn(
-                "rounded-xl px-3.5 py-1.5 text-[12.5px] font-medium transition",
+                "rounded-xl px-4 py-2 text-[13.5px] font-medium transition",
                 phase === p2
                   ? "bg-white/[0.14] text-white shadow-inner ring-1 ring-white/15"
                   : "text-white/45 hover:text-white/80",
@@ -98,7 +98,7 @@ export function TimerPanel({
       </div>
 
       {/* ring */}
-      <div className="relative mx-auto mt-5 flex h-[300px] w-[300px] items-center justify-center sm:h-[326px] sm:w-[326px]">
+      <div className="relative mx-auto mt-6 flex h-[340px] w-[340px] items-center justify-center sm:h-[400px] sm:w-[400px] xl:h-[460px] xl:w-[460px]">
         <svg viewBox="0 0 300 300" className="absolute inset-0 h-full w-full -rotate-90">
           <defs>
             <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
@@ -106,14 +106,14 @@ export function TimerPanel({
               <stop offset="100%" stopColor="var(--accent-2)" />
             </linearGradient>
           </defs>
-          <circle cx="150" cy="150" r={R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="10" />
+          <circle cx="150" cy="150" r={R} fill="none" stroke="rgba(255,255,255,0.16)" strokeWidth="12" />
           <circle
             cx="150"
             cy="150"
             r={R}
             fill="none"
             stroke="url(#ringGrad)"
-            strokeWidth="10"
+            strokeWidth="12"
             strokeLinecap="round"
             strokeDasharray={C}
             strokeDashoffset={dash}
@@ -152,7 +152,7 @@ export function TimerPanel({
           </span>
           <div
             className={cn(
-              "tabular text-[64px] font-extralight leading-none tracking-tight text-white sm:text-[72px]",
+              "tabular text-[72px] font-light leading-none tracking-tight text-white sm:text-[92px] xl:text-[108px]",
               nearDone && "animate-pulse",
             )}
           >
@@ -177,7 +177,7 @@ export function TimerPanel({
         <button
           type="button"
           onClick={onToggle}
-          className="group relative flex h-14 min-w-[176px] items-center justify-center gap-2.5 overflow-hidden rounded-2xl text-[15px] font-semibold text-white shadow-[0_14px_40px_-12px_var(--accent)] transition active:scale-[0.98]"
+          className="group relative flex h-16 min-w-[210px] items-center justify-center gap-2.5 overflow-hidden rounded-2xl text-[16px] font-semibold text-white shadow-[0_16px_48px_-12px_var(--accent)] transition active:scale-[0.98]"
           style={{ backgroundImage: "linear-gradient(135deg, var(--accent), var(--accent-2))" }}
         >
           <Icon name={running ? "pause" : "play"} className="h-5 w-5" filled={!running} />
@@ -193,7 +193,9 @@ export function TimerPanel({
         <div className="mb-2.5 flex items-center justify-between gap-3">
           <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">Ambience</span>
           <div className="flex flex-1 items-center justify-end gap-2">
-            <Icon name={metaOf(settings.ambient).icon} className="h-3.5 w-3.5 text-white/30" />
+            {settings.ambient !== "off" && (
+              <Icon name={metaOf(settings.ambient).icon} className="h-3.5 w-3.5 text-white/45" />
+            )}
             <input
               type="range"
               min={0}
@@ -226,7 +228,7 @@ export function TimerPanel({
                       title={m.desc}
                       onClick={() => onAmbient(m.key)}
                       className={cn(
-                        "flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[11.5px] font-medium transition",
+                        "flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12.5px] font-medium transition",
                         on
                           ? "bg-[var(--accent)]/20 text-[var(--accent)] ring-1 ring-[var(--accent)]/35"
                           : "text-white/45 ring-1 ring-white/[0.08] hover:bg-white/[0.06] hover:text-white/85",

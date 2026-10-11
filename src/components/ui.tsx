@@ -192,7 +192,7 @@ export function SectionTitle({
           </span>
         )}
         <div>
-          <h2 className="text-[15px] font-semibold tracking-tight text-white">{title}</h2>
+          <h2 className="text-[16px] font-semibold tracking-tight text-white">{title}</h2>
           {hint && <p className="text-[11.5px] text-white/45">{hint}</p>}
         </div>
       </div>
@@ -213,7 +213,7 @@ export function Pill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium",
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium",
         tone === "accent"
           ? "bg-[var(--accent)]/15 text-[var(--accent)] ring-1 ring-[var(--accent)]/25"
           : "bg-white/[0.06] text-white/60 ring-1 ring-white/10",

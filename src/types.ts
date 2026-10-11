@@ -33,7 +33,21 @@ export type Ambient =
   | "pink"
   | "drone";
 
-export type AccentKey = "violet" | "sky" | "emerald" | "amber" | "rose";
+export type AccentKey =
+  | "lime"
+  | "emerald"
+  | "mint"
+  | "teal"
+  | "cyan"
+  | "sky"
+  | "indigo"
+  | "violet"
+  | "fuchsia"
+  | "rose"
+  | "coral"
+  | "orange"
+  | "amber"
+  | "gold";
 
 export interface Settings {
   focus: number;
@@ -51,11 +65,20 @@ export interface Settings {
 }
 
 export const ACCENTS: Record<AccentKey, { label: string; a: string; b: string }> = {
-  violet: { label: "Violet", a: "#8b5cf6", b: "#6366f1" },
-  sky: { label: "Sky", a: "#38bdf8", b: "#0ea5e9" },
+  lime: { label: "Lime", a: "#c6f135", b: "#84cc16" },
   emerald: { label: "Emerald", a: "#34d399", b: "#10b981" },
-  amber: { label: "Amber", a: "#fbbf24", b: "#f59e0b" },
-  rose: { label: "Rose", a: "#fb7185", b: "#f43f5e" },
+  mint: { label: "Mint", a: "#5eead4", b: "#14b8a6" },
+  teal: { label: "Teal", a: "#2dd4bf", b: "#0d9488" },
+  cyan: { label: "Cyan", a: "#22d3ee", b: "#0891b2" },
+  sky: { label: "Sky", a: "#38bdf8", b: "#0284c7" },
+  indigo: { label: "Indigo", a: "#818cf8", b: "#4f46e5" },
+  violet: { label: "Violet", a: "#a78bfa", b: "#7c3aed" },
+  fuchsia: { label: "Fuchsia", a: "#e879f9", b: "#c026d3" },
+  rose: { label: "Rose", a: "#fb7185", b: "#e11d48" },
+  coral: { label: "Coral", a: "#ff8a6a", b: "#f43f5e" },
+  orange: { label: "Orange", a: "#fb923c", b: "#ea580c" },
+  amber: { label: "Amber", a: "#fbbf24", b: "#d97706" },
+  gold: { label: "Gold", a: "#f5d06a", b: "#ca8a04" },
 };
 
 export const PHASE_META: Record<
@@ -113,6 +136,6 @@ export const DEFAULT_SETTINGS: Settings = {
   ambient: "off",
   layer: "off",
   volume: 0.45,
-  accent: "violet",
+  accent: "lime",
   dailyGoal: 8,
 };

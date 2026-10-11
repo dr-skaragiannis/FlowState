@@ -51,7 +51,7 @@ export function SettingsPanel({
       />
       <aside
         className={cn(
-          "fixed right-0 top-0 z-50 flex h-full w-full max-w-[400px] flex-col border-l border-white/10 bg-[#0a0b13]/95 backdrop-blur-2xl transition-transform duration-400 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+          "fixed right-0 top-0 z-50 flex h-full w-full max-w-[440px] flex-col border-l border-white/10 bg-[#0a0b13]/95 backdrop-blur-2xl transition-transform duration-400 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
           open ? "translate-x-0" : "translate-x-full",
         )}
       >
@@ -178,23 +178,29 @@ export function SettingsPanel({
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-[11px] uppercase tracking-[0.16em] text-white/35">Accent</h3>
-            <div className="flex flex-wrap gap-2">
+            <h3 className="text-[11px] uppercase tracking-[0.16em] text-white/35">Theme</h3>
+            <div className="grid grid-cols-2 gap-2">
               {(Object.keys(ACCENTS) as AccentKey[]).map((k) => (
                 <button
                   key={k}
                   type="button"
                   onClick={() => set({ accent: k })}
                   className={cn(
-                    "flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-medium transition",
+                    "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[12.5px] font-medium transition",
                     settings.accent === k
-                      ? "bg-white/[0.13] text-white ring-1 ring-white/20"
-                      : "bg-white/[0.03] text-white/50 ring-1 ring-white/[0.07] hover:text-white/85",
+                      ? "bg-white/[0.13] text-white ring-1 ring-white/25"
+                      : "bg-white/[0.03] text-white/55 ring-1 ring-white/[0.07] hover:bg-white/[0.06] hover:text-white",
                   )}
                 >
                   <span
-                    className="h-3.5 w-3.5 rounded-full ring-1 ring-white/20"
-                    style={{ backgroundImage: `linear-gradient(135deg, ${ACCENTS[k].a}, ${ACCENTS[k].b})` }}
+                    className="h-4 w-4 shrink-0 rounded-[5px] ring-1 ring-white/25"
+                    style={{
+                      backgroundImage: `linear-gradient(135deg, ${ACCENTS[k].a}, ${ACCENTS[k].b})`,
+                      boxShadow:
+                        settings.accent === k
+                          ? `0 0 12px ${ACCENTS[k].a}`
+                          : undefined,
+                    }}
                   />
                   {ACCENTS[k].label}
                 </button>
@@ -244,7 +250,7 @@ export function SettingsPanel({
               </button>
             </div>
             <p className="pt-1 text-[11px] leading-relaxed text-white/35">
-              Flowstate keeps every session, task and preference in this browser only — nothing leaves your
+              LIFEFORM keeps every session, task and preference in this browser only — nothing leaves your
               machine.
             </p>
           </div>

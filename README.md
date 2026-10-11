@@ -1,6 +1,6 @@
-# Flowstate
+# LIFEFORM
 
-A calm pomodoro workspace — focus timer, task board, ambience and momentum tracking.
+A cellular focus studio — pomodoro timer, task board, ambience and momentum tracking.
 Everything stays local in your browser.
 
 Built with React 19, TypeScript, Vite and Tailwind CSS 4.
