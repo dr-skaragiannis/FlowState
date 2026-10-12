@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Ambient, Settings } from "../types";
 import { ARP_META, ARP_SPEEDS, arpChordStep, voiceChord, type ArpId, type ArpSpeed } from "../lib/arp";
+import { audio } from "../lib/audio";
 import { noteName, pitchClass, PRESET_META, synth, type PresetId } from "../lib/synth";
 import { useLocalStorage } from "../lib/utils";
 import { cn } from "../utils/cn";
@@ -195,12 +196,12 @@ export function PlayPage({
   }, []);
 
   const press = useCallback(
-    (midi: number, velocity = 0.8, voice?: PresetId) => {
+    (midi: number, velocity = 0.8, voice?: PresetId, shape?: { attack?: number; level?: number }) => {
       const n = counts.current.get(midi) ?? 0;
       counts.current.set(midi, n + 1);
       if (n === 0) {
         latched.current.delete(midi);
-        synth.noteOn(midi, velocity, voice);
+        synth.noteOn(midi, velocity, voice, shape);
       }
       sync();
     },
@@ -239,7 +240,9 @@ export function PlayPage({
 
   const playArp = useCallback((midi: number, velocity: number) => {
     arpHeld.current.add(midi);
-    pressRef.current(midi, velocity, "crypt");
+    // The Crypt pad's own attack is longer than an arp step, so it never
+    // reaches an audible level before the next note cuts it off.
+    pressRef.current(midi, velocity, "crypt", { attack: 0.16, level: 0.46 });
   }, []);
 
   const setSustain = useCallback(
@@ -305,7 +308,10 @@ export function PlayPage({
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.code === "KeyA") {
         e.preventDefault();
-        if (!e.repeat) setArpOn((on) => !on);
+        if (!e.repeat) {
+          audio.unlock();
+          setArpOn((on) => !on);
+        }
         return;
       }
       const patternByKey: Partial<Record<string, ArpId>> = {
@@ -427,7 +433,9 @@ export function PlayPage({
       });
       hit.notes.forEach((midi, i) => {
         if (arpHeld.current.has(midi)) return;
-        later(() => playArp(midi, i === 0 ? 0.74 : 0.46), i * hit.stagger);
+        // Play in this turn so the note is scheduled while the audio clock is running.
+        if (i === 0 || hit.stagger === 0) playArp(midi, 0.84);
+        else later(() => playArp(midi, 0.62), i * hit.stagger);
       });
       later(tick, speedMs);
     };
@@ -633,7 +641,10 @@ export function PlayPage({
           <button
             type="button"
             aria-pressed={arpOn}
-            onClick={() => setArpOn((on) => !on)}
+            onClick={() => {
+              audio.unlock();
+              setArpOn((on) => !on);
+            }}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition",
               arpOn ? "text-[#061014]" : "text-white/85 ring-1 ring-white/15 hover:bg-white/[0.06]",

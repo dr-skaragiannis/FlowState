@@ -159,12 +159,18 @@ class SynthEngine {
     return { ctx, out: this.out };
   }
 
-  noteOn(midi: number, velocity = 0.8, voice?: PresetId) {
+  noteOn(
+    midi: number,
+    velocity = 0.8,
+    voice?: PresetId,
+    shape?: { attack?: number; level?: number },
+  ) {
     const dest = this.dest();
     if (!dest) return;
     this.silence(midi, 0.02);
     const { ctx, out } = dest;
-    const preset = PRESETS[voice ?? this.preset] ?? PRESETS[this.preset];
+    const base = PRESETS[voice ?? this.preset] ?? PRESETS[this.preset];
+    const preset = shape ? { ...base, ...shape } : base;
     const now = ctx.currentTime;
     const freq = 440 * 2 ** ((midi - 69) / 12);
     const peak = Math.max(0.0008, preset.level * Math.max(0.05, Math.min(1, velocity)));
